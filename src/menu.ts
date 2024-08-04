@@ -1,11 +1,4 @@
-import {
-	ImageData,
-	Menu,
-	NotificationsSDK,
-	ResetSettingsUpdated,
-	Sleeper,
-	UnitData
-} from "github.com/octarine-public/wrapper/index"
+import { ImageData, Menu, UnitData } from "github.com/octarine-public/wrapper/index"
 
 export class MenuManager {
 	public HeroNames: string[] = []
@@ -17,7 +10,7 @@ export class MenuManager {
 	private readonly baseNode = Menu.AddEntry("Utility")
 	private readonly attrNames = ["Strength", "Agility", "Intellect", "Universal"]
 
-	constructor(private readonly sleeper: Sleeper) {
+	constructor() {
 		this.tree = this.baseNode.AddNode("Auto pick", ImageData.Paths.Icons.magic_resist)
 		this.State = this.tree.AddToggle("State")
 		this.heroAttribute = this.tree.AddDropdown(
@@ -28,36 +21,27 @@ export class MenuManager {
 		this.heroAttribute.OnValue(call =>
 			this.UpdateHeroSelectedNodes(call, this.HeroSelected)
 		)
-		this.tree
-			.AddButton("Reset settings", "Reset settings to default")
-			.OnValue(() => this.ResetSettings())
+	}
+
+	private get getArrStoreData() {
+		return [...UnitData.globalStorage.entries()]
 	}
 
 	public UnitAbilityDataUpdated() {
-		this.HeroNames = Array.from(UnitData.globalStorage.entries())
+		this.HeroNames = this.getArrStoreData
 			.filter(([name, data]) => this.IsValidName(name, data))
 			.map(([name]) => name)
-	}
-
-	protected ResetSettings() {
-		if (!this.sleeper.Sleeping("ResetSettings")) {
-			this.State.value = this.State.defaultValue
-			NotificationsSDK.Push(new ResetSettingsUpdated())
-			this.sleeper.Sleep(2 * 1000, "ResetSettings")
-		}
 	}
 
 	protected UpdateHeroSelectedNodes(
 		attribute: Menu.Dropdown,
 		imageSelector: Menu.ImageSelector
 	) {
-		const entries = Array.from(UnitData.globalStorage.entries())
-
-		this.HeroNames = entries
+		this.HeroNames = this.getArrStoreData
 			.filter(([name, data]) => this.IsValidName(name, data))
 			.map(([name]) => name)
 
-		const heroes = entries
+		const heroes = this.getArrStoreData
 			.filter(
 				([name, data]) =>
 					this.IsValidName(name, data) &&

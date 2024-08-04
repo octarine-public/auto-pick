@@ -12,28 +12,52 @@ import {
 
 import { MenuManager } from "./menu"
 
-const bootstrap = new (class CAutoPick {
+new (class CAutoPick {
+	private readonly menu!: MenuManager
 	private readonly sleeper = new Sleeper()
-	private readonly menu = new MenuManager(this.sleeper)
 	private readonly heroesDisallowed = new Set<number>()
 
-	protected get IsBanPhase() {
+	private get isBanPhase() {
 		return GameRules?.IsBanPhase ?? false
 	}
 
-	protected get GameState() {
+	private get gameState() {
 		return GameRules?.GameState ?? DOTAGameState.DOTA_GAMERULES_STATE_INIT
 	}
 
-	protected get IsHeroSelection() {
-		return this.GameState === DOTAGameState.DOTA_GAMERULES_STATE_HERO_SELECTION
+	private get isHeroSelection() {
+		return this.gameState === DOTAGameState.DOTA_GAMERULES_STATE_HERO_SELECTION
 	}
 
-	public PostDataUpdate() {
-		if (!GameState.IsConnected || !this.menu.State.value) {
+	private get state() {
+		return this.menu.State
+	}
+
+	private get heroSelector() {
+		return this.menu.HeroSelected
+	}
+
+	private get heroNames() {
+		return this.menu.HeroNames
+	}
+
+	constructor(canBeInitialized: boolean) {
+		if (!canBeInitialized) {
 			return
 		}
-		if (!this.IsHeroSelection || this.IsBanPhase) {
+		this.menu = new MenuManager()
+		EventsSDK.on("GameEnded", this.GameChanged.bind(this))
+		EventsSDK.on("GameStarted", this.GameChanged.bind(this))
+		EventsSDK.on("ChatEvent", this.ChatEvent.bind(this))
+		EventsSDK.on("PostDataUpdate", this.PostDataUpdate.bind(this))
+		EventsSDK.on("UnitAbilityDataUpdated", this.UnitAbilityDataUpdated.bind(this))
+	}
+
+	public PostDataUpdate(_dt: number) {
+		if (!GameState.IsConnected || !this.state) {
+			return
+		}
+		if (!this.isHeroSelection || this.isBanPhase) {
 			return
 		}
 		const heroName = this.GetHeroName()
@@ -41,10 +65,10 @@ const bootstrap = new (class CAutoPick {
 			return
 		}
 		GameState.ExecuteCommand(`dota_select_hero ${heroName}`)
-		this.sleeper.Sleep(3 * 10, "pickHero")
+		this.sleeper.Sleep(GameState.InputLag * 1000, "pickHero")
 	}
 
-	public OnChatEvent(type: DOTA_CHAT_MESSAGE, heroID: number) {
+	public ChatEvent(type: DOTA_CHAT_MESSAGE, heroID: number, ..._args: number[]) {
 		if (this.heroesDisallowed.has(heroID)) {
 			return
 		}
@@ -66,9 +90,9 @@ const bootstrap = new (class CAutoPick {
 	}
 
 	protected GetHeroName() {
-		for (let index = this.menu.HeroNames.length - 1; index > -1; index--) {
-			const name = this.menu.HeroNames[index]
-			if (!this.menu.HeroSelected.IsEnabled(name)) {
+		for (let index = this.heroNames.length - 1; index > -1; index--) {
+			const name = this.heroNames[index]
+			if (!this.heroSelector.IsEnabled(name)) {
 				continue
 			}
 			const heroId = UnitData.GetHeroID(name)
@@ -77,12 +101,4 @@ const bootstrap = new (class CAutoPick {
 			}
 		}
 	}
-})()
-
-EventsSDK.on("GameEnded", () => bootstrap.GameChanged())
-
-EventsSDK.on("GameStarted", () => bootstrap.GameChanged())
-
-EventsSDK.on("PostDataUpdate", () => bootstrap.PostDataUpdate())
-
-EventsSDK.on("UnitAbilityDataUpdated", () => bootstrap.UnitAbilityDataUpdated())
+})(false)
