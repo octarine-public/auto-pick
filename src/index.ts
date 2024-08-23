@@ -101,4 +101,4 @@ new (class CAutoPick {
 			}
 		}
 	}
-})(false)
+})(true)
