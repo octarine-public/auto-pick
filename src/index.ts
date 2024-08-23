@@ -30,7 +30,7 @@ new (class CAutoPick {
 	}
 
 	private get state() {
-		return this.menu.State
+		return this.menu.State.value
 	}
 
 	private get heroSelector() {
