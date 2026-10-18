@@ -1,1 +1,11 @@
-{}
+{
+	"Auto pick": "自动选择英雄",
+	"Picks the first of your heroes\nthat is still free once picking opens": "选择阶段开始时\n选择你列表中第一个仍可选的英雄",
+	"State": "状态",
+	"Heroes": "英雄",
+	"Heroes to pick, the first one free goes.\nPress + to choose them, drag to reorder": "要选择的英雄，选择第一个可选的。\n按 + 选择英雄，拖动以调整顺序",
+	"Strength": "力量",
+	"Agility": "敏捷",
+	"Intellect": "智力",
+	"Universal": "全才"
+}

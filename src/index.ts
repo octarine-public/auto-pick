@@ -1,45 +1,11 @@
 import "./translations"
 
-import {
-	DOTA_CHAT_MESSAGE,
-	DOTAGameState,
-	EventsSDK,
-	GameRules,
-	GameState,
-	Sleeper,
-	UnitData
-} from "github.com/octarine-public/wrapper/index"
-
 import { MenuManager } from "./menu"
 
 new (class CAutoPick {
 	private readonly menu!: MenuManager
 	private readonly sleeper = new Sleeper()
 	private readonly heroesDisallowed = new Set<number>()
-
-	private get isBanPhase() {
-		return GameRules?.IsBanPhase ?? false
-	}
-
-	private get gameState() {
-		return GameRules?.GameState ?? DOTAGameState.DOTA_GAMERULES_STATE_INIT
-	}
-
-	private get isHeroSelection() {
-		return this.gameState === DOTAGameState.DOTA_GAMERULES_STATE_HERO_SELECTION
-	}
-
-	private get state() {
-		return this.menu.State.value
-	}
-
-	private get heroSelector() {
-		return this.menu.HeroSelected
-	}
-
-	private get heroNames() {
-		return this.menu.HeroNames
-	}
 
 	constructor(canBeInitialized: boolean) {
 		if (!canBeInitialized) {
@@ -53,15 +19,33 @@ new (class CAutoPick {
 		EventsSDK.on("UnitAbilityDataUpdated", this.UnitAbilityDataUpdated.bind(this))
 	}
 
+	private get isHeroSelection() {
+		return (
+			GameRules !== undefined &&
+			!GameRules.IsBanPhase &&
+			GameRules.GameState === DOTAGameState.DOTA_GAMERULES_STATE_HERO_SELECTION
+		)
+	}
+
+	/** Whether the local player has a hero locked in already. */
+	private get hasPicked() {
+		const player = PlayerCustomData.Array.find(data => data.IsLocalPlayer)
+		return player === undefined || player.IsSpectator || player.SelectedHeroID > 0
+	}
+
 	public PostDataUpdate(_dt: number) {
-		if (!GameState.IsConnected || !this.state) {
+		if (!GameState.IsConnected || !this.menu.State.value) {
 			return
 		}
-		if (!this.isHeroSelection || this.isBanPhase) {
+		if (!this.isHeroSelection || this.hasPicked) {
 			return
 		}
+		if (this.sleeper.Sleeping("pickHero")) {
+			return
+		}
+		this.updateBannedHeroes()
 		const heroName = this.GetHeroName()
-		if (heroName === undefined || this.sleeper.Sleeping("pickHero")) {
+		if (heroName === undefined) {
 			return
 		}
 		GameState.ExecuteCommand(`dota_select_hero ${heroName}`)
@@ -69,9 +53,6 @@ new (class CAutoPick {
 	}
 
 	public ChatEvent(type: DOTA_CHAT_MESSAGE, heroID: number, ..._args: number[]) {
-		if (this.heroesDisallowed.has(heroID)) {
-			return
-		}
 		switch (type) {
 			case DOTA_CHAT_MESSAGE.CHAT_MESSAGE_HERO_BANNED:
 			case DOTA_CHAT_MESSAGE.CHAT_MESSAGE_HERO_CHOICE_INVALID:
@@ -86,19 +67,20 @@ new (class CAutoPick {
 	}
 
 	public UnitAbilityDataUpdated() {
-		this.menu.UnitAbilityDataUpdated()
+		this.menu.UnitDataUpdated()
 	}
 
+	/** The first chosen hero, in the picker's order, that is neither banned nor taken. */
 	protected GetHeroName() {
-		for (let index = this.heroNames.length - 1; index > -1; index--) {
-			const name = this.heroNames[index]
-			if (!this.heroSelector.IsEnabled(name)) {
-				continue
-			}
-			const heroId = UnitData.GetHeroID(name)
-			if (!this.heroesDisallowed.has(heroId)) {
-				return name
-			}
+		return this.menu.ChosenHeroes.find(
+			name => !this.heroesDisallowed.has(UnitData.GetHeroID(name))
+		)
+	}
+
+	private updateBannedHeroes() {
+		const banned = GameRules?.BannedHeroesIDs ?? []
+		for (let index = banned.length - 1; index > -1; index--) {
+			this.heroesDisallowed.add(banned[index])
 		}
 	}
 })(true)

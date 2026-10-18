@@ -1,10 +1,11 @@
 {
-	"State": "Состояние",
-	"Strength": "Сила",
-	"Heroes": "Герои",
 	"Auto pick": "Авто пик",
+	"Picks the first of your heroes\nthat is still free once picking opens": "Выбирает первого из ваших героев,\nкоторый ещё свободен, когда открывается выбор",
+	"State": "Состояние",
+	"Heroes": "Герои",
+	"Heroes to pick, the first one free goes.\nPress + to choose them, drag to reorder": "Герои для выбора, берётся первый свободный.\nНажмите +, чтобы выбрать, перетащите для порядка",
+	"Strength": "Сила",
 	"Agility": "Ловкость",
 	"Intellect": "Интеллект",
-	"Universal": "Универсальный",
-	"Primary attribute hero": "Основной атрибут героя"
+	"Universal": "Универсальный"
 }
